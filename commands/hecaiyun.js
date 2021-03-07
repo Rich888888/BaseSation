@@ -2,18 +2,15 @@
 const path = require('path')
 const { buildArgs } = require('../utils/util')
 
-exports.command = 'wps'
+exports.command = 'hecaiyun'
 
-exports.describe = 'wps签到任务'
+exports.describe = 'hecaiyun任务'
 
 exports.builder = function (yargs) {
     return yargs
-        .option('wps_sid', {
-            describe: 'cookie项wps_sid的值',
-            type: 'string'
-        })
-        .option('csrf', {
-            describe: 'cookie项csrf的值',
+        .option('cookies', {
+            describe: '签到cookies',
+            default: '',
             type: 'string'
         })
         .help()
@@ -28,18 +25,17 @@ exports.handler = async function (argv) {
     for (let account of accounts) {
         let { scheduler } = require('../utils/scheduler')
         await require(path.join(__dirname, 'tasks', command, command)).start({
-            cookies: {
-                wps_sid: account.wps_sid,
-                csrf: account.csrf,
-            },
-            options: {}
-        }).catch(err => console.error("wps签到任务:", err.message))
+            cookies: account.cookies,
+            options: account
+        }).catch(err => console.error(exports.describe, err))
         let hasTasks = await scheduler.hasWillTask(command, {
             tryrun: 'tryrun' in argv,
-            taskKey: account.wps_sid
+            taskKey: account.user,
+            tasks: account.tasks
         })
         if (hasTasks) {
-            scheduler.execTask(command, account.tasks).catch(err => console.error("wps签到任务:", err.message)).finally(() => {
+            scheduler.execTask(command, account.tasks).catch(err => console.error(exports.describe, err)).finally(() => {
+                delete process.env.current_task
                 console.info('当前任务执行完毕！')
             })
         } else {
